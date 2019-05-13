@@ -59,6 +59,39 @@ class ProjectDetail(generics.RetrieveUpdateDestroyAPIView):
     permission_classes = (IsAuthenticated, IsProjectUser, IsAdminUserAndWriteOnly)
 
 
+class ProjectUserList(generics.ListCreateAPIView):
+    queryset = get_user_model().objects.all()
+    serializer_class = UserSerializer
+    pagination_class = None
+    permission_classes = (IsAuthenticated, IsProjectUser, IsAdminUser)
+
+    def get_queryset(self):
+        project = get_object_or_404(Project, pk=self.kwargs['project_id'])
+        return project.users
+
+    def create(self, request, *args, **kwargs):
+        user = get_object_or_404(get_user_model(), pk=request.data.get('user_id'))
+        project = get_object_or_404(Project, pk=self.kwargs['project_id'])
+        project.users.add(user)
+        project.save()
+        serializer = UserSerializer(project.users, many=True)
+        headers = self.get_success_headers(serializer.data)
+        return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
+
+
+class ProjectUserDetail(generics.DestroyAPIView):
+    queryset = get_user_model().objects.all()
+    serializer_class = UserSerializer
+    lookup_url_kwarg = 'user_id'
+    permission_classes = (IsAuthenticated, IsProjectUser, IsAdminUserAndWriteOnly)
+
+    def destroy(self, request, *args, **kwargs):
+        instance = self.get_object()
+        project = get_object_or_404(Project, pk=self.kwargs['project_id'])
+        project.users.remove(instance)
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
 class StatisticsAPI(APIView):
     pagination_class = None
     permission_classes = (IsAuthenticated, IsProjectUser, IsAdminUserAndWriteOnly)
